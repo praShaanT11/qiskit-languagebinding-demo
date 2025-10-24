@@ -454,11 +454,11 @@ int main(int argc, char *argv[])
         return 0;
     } catch (const std::exception &e) {
         std::cerr << "Unhandled exception in main: " << e.what() << std::endl;
-        MPI_Finalize();
+        MPI_Abort(MPI_COMM_WORLD, 1);
         return 1;
     } catch (...) {
         std::cerr << "Unknown exception in main" << std::endl;
-        MPI_Finalize();
+        MPI_Abort(MPI_COMM_WORLD, 1);
         return 1;
     }
 }
