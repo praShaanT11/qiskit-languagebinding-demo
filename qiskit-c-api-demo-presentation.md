@@ -589,7 +589,70 @@ namespace Qiskit::primitives {
 }
 ```
 
-**Note**: The C++ wrapper automatically handles memory management using RAII and smart pointers, eliminating the need for manual `free()` calls required by the raw C API.
+### Observables
+
+**Source**: [`deps/qiskit-cpp/src/quantum/observable.hpp`](deps/qiskit-cpp/src/quantum/observable.hpp) (hypothetical)
+
+```cpp
+namespace Qiskit::quantum {
+    // Bit term labels for Pauli operators and projectors
+    // Note: Values match the underlying C API (QkBitTerm enum)
+    enum class BitTerm : uint8_t {
+        Z = 1,      // Pauli Z (0x01)
+        X = 2,      // Pauli X (0x02)
+        Y = 3,      // Pauli Y (0x03)
+        One = 5,    // Projector |1⟩⟨1| (0x05)
+        Minus = 6,  // Projector |-⟩⟨-| (0x06)
+        Left = 7,   // Projector |L⟩⟨L| (0x07)
+        Zero = 9,   // Projector |0⟩⟨0| (0x09)
+        Plus = 10,  // Projector |+⟩⟨+| (0x0a)
+        Right = 11  // Projector |R⟩⟨R| (0x0b)
+    };
+    
+    // Sparse observable class
+    class SparseObservable {
+        // Constructors
+        SparseObservable(uint_t num_qubits);  // Create empty observable
+        
+        // Properties
+        uint_t num_qubits() const;   // Number of qubits
+        size_t num_terms() const;    // Number of Pauli terms
+        size_t len() const;          // Total length of all terms
+        
+        // Operations
+        void add_term(const std::vector<BitTerm>& paulis,
+                     const std::vector<uint_t>& indices,
+                     std::complex<double> coeff);
+        
+        // Destructor (automatic cleanup via RAII)
+        ~SparseObservable();
+    };
+}
+```
+
+**Example: Creating a Hamiltonian Observable**
+
+```cpp
+#include "quantum/observable.hpp"
+
+using namespace Qiskit::quantum;
+
+// Create H = 0.5*Z0 + 0.3*X1*X2 + 0.2*Y0*Z1
+auto obs = SparseObservable(3);  // 3 qubits
+
+// Add Z on qubit 0 with coefficient 0.5
+obs.add_term({BitTerm::Z}, {0}, 0.5);
+
+// Add X1*X2 with coefficient 0.3
+obs.add_term({BitTerm::X, BitTerm::X}, {1, 2}, 0.3);
+
+// Add Y0*Z1 with coefficient 0.2
+obs.add_term({BitTerm::Y, BitTerm::Z}, {0, 1}, 0.2);
+
+std::cout << "Observable has " << obs.num_terms() << " terms" << std::endl;
+```
+
+**Note**: The C++ wrapper automatically handles memory management using RAII and smart pointers, eliminating the need for manual `free()` calls required by the raw C API. The BitTerm enum values are designed to match the underlying C API for seamless interoperability.
 
 ### Example: Creating a Bell State Circuit
 
@@ -641,12 +704,32 @@ int main() {
 The C++ wrapper internally uses the C API from [`qiskit/crates/cext`](qiskit/crates/cext):
 
 ```c
-// Raw C API (wrapped by C++ classes above)
+// Raw C API for circuits (wrapped by C++ classes above)
 QkCircuit* qk_circuit_new(uint32_t num_qubits, uint32_t num_clbits);
 void qk_circuit_free(QkCircuit* circuit);
 QkExitCode qk_circuit_gate(QkCircuit* circuit, QkGate gate,
                            const uint32_t* qubits, const double* params);
 QkExitCode qk_circuit_measure(QkCircuit* circuit, uint32_t qubit, uint32_t clbit);
+
+// Raw C API for observables
+typedef enum {
+    QkBitTerm_Z = 0x01,      // Pauli Z (1)
+    QkBitTerm_X = 0x02,      // Pauli X (2)
+    QkBitTerm_Y = 0x03,      // Pauli Y (3)
+    QkBitTerm_One = 0x05,    // Projector |1⟩⟨1| (5)
+    QkBitTerm_Minus = 0x06,  // Projector |-⟩⟨-| (6)
+    QkBitTerm_Left = 0x07,   // Projector |L⟩⟨L| (7)
+    QkBitTerm_Zero = 0x09,   // Projector |0⟩⟨0| (9)
+    QkBitTerm_Plus = 0x0a,   // Projector |+⟩⟨+| (10)
+    QkBitTerm_Right = 0x0b   // Projector |R⟩⟨R| (11)
+} QkBitTerm;
+
+QkObs* qk_obs_zero(uint32_t num_qubits);
+void qk_obs_free(QkObs* obs);
+size_t qk_obs_num_terms(const QkObs* obs);
+uint32_t qk_obs_num_qubits(const QkObs* obs);
+size_t qk_obs_len(const QkObs* obs);
+char qk_bitterm_label(QkBitTerm bit_term);
 ```
 
 The C++ wrapper provides RAII-based memory management, eliminating manual memory management.

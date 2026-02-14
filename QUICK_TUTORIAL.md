@@ -78,25 +78,42 @@ Then add linking (after line 156):
 
 ```cmake
 # Link my_circuit
-if(APPLE)
+if(MSVC)
+    target_link_directories(my_circuit PUBLIC
+        ${QISKIT_ROOT}/target/release
+        ${QRMI_ROOT}/target/release)
+    target_link_libraries(my_circuit
+        OpenMP::OpenMP_CXX
+        nlohmann_json::nlohmann_json
+        qiskit_cext.dll.lib
+        qrmi.dll.lib)
+elseif(APPLE)
     target_link_directories(my_circuit PUBLIC
         ${QISKIT_ROOT}/dist/c/lib
         ${QRMI_ROOT}/target/release)
     target_link_libraries(my_circuit
-        qiskit qrmi OpenMP::OpenMP_CXX nlohmann_json::nlohmann_json ${ACCELERATE_LIBRARY})
+        qiskit
+        qrmi
+        OpenMP::OpenMP_CXX
+        nlohmann_json::nlohmann_json
+        ${ACCELERATE_LIBRARY})
     set_target_properties(my_circuit PROPERTIES
-        BUILD_RPATH "${QISKIT_ROOT}/dist/c/lib;${QRMI_ROOT}/target/release"
-        INSTALL_RPATH "${QISKIT_ROOT}/dist/c/lib;${QRMI_ROOT}/target/release")
+        BUILD_RPATH "${QISKIT_ROOT}/dist/c/lib;${QISKIT_ROOT}/target/release/deps;${QRMI_ROOT}/target/release"
+        INSTALL_RPATH "${QISKIT_ROOT}/dist/c/lib;${QISKIT_ROOT}/target/release/deps;${QRMI_ROOT}/target/release")
 else()
     target_link_libraries(my_circuit PUBLIC
-        "-L${QISKIT_ROOT}/dist/c/lib -L${QRMI_ROOT}/target/release"
-        qiskit qrmi OpenMP::OpenMP_CXX nlohmann_json::nlohmann_json)
+        "-L${QISKIT_ROOT}/dist/c/lib -L${QRMI_ROOT}/target/release -Wl,-rpath ${QISKIT_ROOT}/dist/c/lib -Wl,-rpath ${QRMI_ROOT}/target/release"
+        qiskit
+        qrmi
+        OpenMP::OpenMP_CXX
+        nlohmann_json::nlohmann_json)
 endif()
 
 target_include_directories(my_circuit PRIVATE
     ${QISKIT_ROOT}/dist/c/include
     ${QRMI_ROOT}
     ${QISKIT_CPP_ROOT}/src)
+target_compile_options(my_circuit PRIVATE "-DQRMI_ROOT=${QRMI_ROOT}")
 ```
 
 ## 3. Build & Run
